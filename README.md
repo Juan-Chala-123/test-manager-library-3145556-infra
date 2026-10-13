@@ -5,6 +5,29 @@
 
 Este repositorio es la **infraestructura** de *Manager Library*: contenedores, red, volúmenes y el motor de base de datos vacío. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
 
+## Ejecución local
+
+No se versionan credenciales. Copia `.env.example` a `.env` dentro de este repositorio y reemplaza
+sus valores de desarrollo únicamente en tu máquina. El archivo `.env` está ignorado por Git.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Todos los comandos de Node, PHP y Composer se ejecutan dentro de las imágenes durante
+`docker compose build` o mediante servicios Compose. No es necesario instalar runtimes en el host.
+
+La base de datos no contiene DDL en este repositorio: el contenedor `api` ejecuta las migraciones de
+Laravel al arrancar. La API queda en `http://localhost:8000`, la aplicación en
+`http://localhost:5173` y la página pública en `http://localhost:8080`.
+
+El sembrador es opt-in y se comunica con la API, nunca con PostgreSQL directamente:
+
+```bash
+docker compose --profile tools run --rm tool
+```
+
 ## Instrucciones
 
 Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto

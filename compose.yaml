@@ -1,0 +1,93 @@
+name: manager-library
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-library}
+      POSTGRES_USER: ${POSTGRES_USER:-library}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set a local password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - library
+
+  api:
+    build:
+      context: ../api
+      dockerfile: ../infra/docker/api.Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:?Set APP_KEY in the local .env}
+      APP_URL: ${API_URL:-http://localhost:8000}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-library}
+      DB_USERNAME: ${POSTGRES_USER:-library}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the local .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the local .env}
+      JWT_TTL: ${JWT_TTL:-28800}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?Set ADMIN_USERNAME in the local .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in the local .env}
+      CORS_ORIGIN: ${APP_URL:-http://localhost:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - api-covers:/var/www/html/var/covers
+    networks:
+      - library
+
+  app:
+    build:
+      context: ../app
+      dockerfile: ../infra/docker/app.Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "${APP_PORT:-5173}:80"
+    depends_on:
+      - api
+    networks:
+      - library
+
+  page:
+    build:
+      context: ../page
+      dockerfile: ../infra/docker/page.Dockerfile
+    ports:
+      - "${PAGE_PORT:-8080}:80"
+    networks:
+      - library
+
+  tool:
+    build:
+      context: ../tool
+      dockerfile: ../infra/docker/tool.Dockerfile
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://api:8000/api/v1}
+      SEEDER_USERNAME: ${SEEDER_USERNAME:?Set SEEDER_USERNAME in the local .env}
+      SEEDER_PASSWORD: ${SEEDER_PASSWORD:?Set SEEDER_PASSWORD in the local .env}
+    depends_on:
+      api:
+        condition: service_started
+    profiles:
+      - tools
+    networks:
+      - library
+
+volumes:
+  postgres-data:
+  api-covers:
+
+networks:
+  library:
